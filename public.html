@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily Tally - Prototype</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #eef; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let players = {};
+
+// Draw loop
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let id in players) {
+        let p = players[id];
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+        ctx.fillStyle = id === socket.id ? "red" : "blue";
+        ctx.fill();
+    }
+    requestAnimationFrame(draw);
+}
+draw();
+
+// Socket events
+socket.on("currentPlayers", (serverPlayers) => { players = serverPlayers; });
+socket.on("newPlayer", (player) => { players[player.id] = { x: player.x, y: player.y }; });
+socket.on("playerMoved", (player) => { if (players[player.id]) players[player.id] = { x: player.x, y: player.y }; });
+socket.on("playerDisconnected", (id) => { delete players[id]; });
+
+// Movement
+window.addEventListener("keydown", (e) => {
+    let dx = 0, dy = 0;
+    if (e.key === "ArrowUp") dy = -5;
+    if (e.key === "ArrowDown") dy = 5;
+    if (e.key === "ArrowLeft") dx = -5;
+    if (e.key === "ArrowRight") dx = 5;
+    if (dx || dy) socket.emit("move", { dx, dy });
+});
+</script>
+</body>
+</html>
